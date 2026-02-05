@@ -1,18 +1,14 @@
-// src/components/TodoItem/TodoItem.tsx
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
 import React, { useEffect, useRef, useState } from 'react';
+import classNames from 'classnames';
 import { Todo } from '../../types/Todo';
 
 type Props = {
   todo: Todo;
-
   isLoading: boolean;
-
   onToggle: (todoId: number) => Promise<void> | void;
-
   onDelete: (todoId: number) => Promise<void> | void;
-
   onRename: (id: number, newTitle: string) => Promise<void> | void;
 };
 
@@ -87,7 +83,10 @@ export const TodoItem: React.FC<Props> = ({
   };
 
   return (
-    <div data-cy="Todo" className={`todo ${todo.completed ? 'completed' : ''}`}>
+    <div
+      data-cy="Todo"
+      className={classNames('todo', { completed: todo.completed })}
+    >
       <label className="todo__status-label">
         <input
           data-cy="TodoStatus"
@@ -101,9 +100,9 @@ export const TodoItem: React.FC<Props> = ({
 
       {isEditing ? (
         <form
-          onSubmit={e => {
+          onSubmit={async e => {
             e.preventDefault();
-            void saveEditing();
+            await saveEditing();
           }}
         >
           <input
@@ -114,7 +113,9 @@ export const TodoItem: React.FC<Props> = ({
             ref={inputRef}
             value={title}
             onChange={e => setTitle(e.target.value)}
-            onBlur={() => void saveEditing()}
+            onBlur={async () => {
+              await saveEditing();
+            }}
             onKeyDown={onKeyDown}
             disabled={isLoading}
           />
@@ -143,9 +144,10 @@ export const TodoItem: React.FC<Props> = ({
           </button>
         </>
       )}
+
       <div
         data-cy="TodoLoader"
-        className={`modal overlay ${isLoading ? 'is-active' : ''}`}
+        className={classNames('modal overlay', { 'is-active': isLoading })}
       >
         <div className="modal-background has-background-white-ter" />
         <div className="loader" />

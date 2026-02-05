@@ -1,4 +1,5 @@
 import React from 'react';
+import classNames from 'classnames';
 
 type Props = {
   showToggle: boolean;
@@ -18,28 +19,34 @@ export const Header: React.FC<Props> = ({
   onChangeTitle,
   onSubmit,
   inputRef,
-}) => (
-  <header className="todoapp__header">
-    {showToggle && (
-      <button
-        type="button"
-        className={`todoapp__toggle-all${allCompleted ? ' active' : ''}`}
-        data-cy="ToggleAllButton"
-        disabled
-      />
-    )}
+}) => {
+  return (
+    <header className="todoapp__header">
+      {showToggle && (
+        <button
+          type="button"
+          className={classNames('todoapp__toggle-all', {
+            active: allCompleted,
+          })}
+          data-cy="ToggleAllButton"
+          disabled
+        />
+      )}
 
-    <form onSubmit={onSubmit}>
-      <input
-        ref={inputRef}
-        data-cy="NewTodoField"
-        type="text"
-        className="todoapp__new-todo"
-        placeholder="What needs to be done?"
-        value={newTitle}
-        onChange={e => onChangeTitle(e.target.value)}
-        disabled={isAdding}
-      />
-    </form>
-  </header>
-);
+      <form onSubmit={onSubmit}>
+        <input
+          ref={inputRef}
+          data-cy="NewTodoField"
+          type="text"
+          className="todoapp__new-todo"
+          placeholder="What needs to be done?"
+          value={newTitle}
+          onChange={e => onChangeTitle(e.target.value)}
+          disabled={isAdding}
+        />
+      </form>
+    </header>
+  );
+};
+
+export default Header;

@@ -1,14 +1,9 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import classNames from 'classnames';
 import { UserWarning } from './UserWarning';
-import {
-  USER_ID,
-  getTodos,
-  createTodo,
-  deleteTodo,
-  updateTodo,
-} from './api/todos';
+import { USER_ID, getTodos, createTodo, deleteTodo } from './api/todos';
 import { Todo } from './types/Todo';
 import { TodoItem } from './components/TodoItem/TodoItem';
 import { Header } from './components/Header/Header';
@@ -20,14 +15,16 @@ const TEMP_TODO_ID = 0;
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [tempTodo, setTempTodo] = useState<Todo | null>(null);
+
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState('');
+
   const [filterStatus, setFilterStatus] = useState<FilterStatus>(
     FilterStatus.All,
   );
-
   const [newTitle, setNewTitle] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+
   const [loadingTodoIds, setLoadingTodoIds] = useState<number[]>([]);
   const newTodoFieldRef = useRef<HTMLInputElement>(null);
 
@@ -36,14 +33,19 @@ export const App: React.FC = () => {
       return;
     }
 
-    const t = window.setTimeout(() => setErrorMessage(''), 3000);
+    const timerId = window.setTimeout(() => setErrorMessage(''), 3000);
 
-    return () => window.clearTimeout(t);
+    return () => window.clearTimeout(timerId);
   }, [errorMessage]);
 
   useEffect(() => {
+    if (!USER_ID) {
+      return;
+    }
+
     setIsLoading(true);
     setErrorMessage('');
+
     getTodos()
       .then(setTodos)
       .catch(() => setErrorMessage(ErrorText.Load))
@@ -74,10 +76,6 @@ export const App: React.FC = () => {
     if (!trimmed) {
       setErrorMessage(ErrorText.Empty);
 
-      if (!USER_ID) {
-        return <UserWarning />;
-      }
-
       return;
     }
 
@@ -95,7 +93,7 @@ export const App: React.FC = () => {
     try {
       const created = await createTodo(trimmed);
 
-      setTodos(prev => prev.concat(created));
+      setTodos(prev => [...prev, created]);
       setNewTitle('');
     } catch {
       setErrorMessage(ErrorText.Add);
@@ -122,27 +120,28 @@ export const App: React.FC = () => {
   };
 
   const handleClearCompleted = async () => {
-    const completed = todos.filter(t => t.completed);
+    const completedTodos = todos.filter(t => t.completed);
 
-    if (!completed.length) {
+    if (!completedTodos.length) {
       return;
     }
 
-    const ids = completed.map(t => t.id);
+    const ids = completedTodos.map(t => t.id);
 
     setLoadingTodoIds(prev => [...prev, ...ids]);
 
     const results = await Promise.allSettled(ids.map(id => deleteTodo(id)));
+
     const succeededIds = ids.filter(
       (_, i) => results[i].status === 'fulfilled',
     );
-    const failed = results.some(r => r.status === 'rejected');
+    const hasAnyError = results.some(r => r.status === 'rejected');
 
     if (succeededIds.length) {
       setTodos(prev => prev.filter(t => !succeededIds.includes(t.id)));
     }
 
-    if (failed) {
+    if (hasAnyError) {
       setErrorMessage(ErrorText.Delete);
     }
 
@@ -150,45 +149,13 @@ export const App: React.FC = () => {
     newTodoFieldRef.current?.focus();
   };
 
-  const handleToggle = async (todo: Todo) => {
-    const id = todo.id;
-
-    setLoadingTodoIds(prev => [...prev, id]);
-
-    try {
-      const patched: Todo = { ...todo, completed: !todo.completed };
-      const updated = await updateTodo(patched);
-
-      setTodos(prev => prev.map(t => (t.id === updated.id ? updated : t)));
-    } catch {
-      setErrorMessage(ErrorText.Update);
-    } finally {
-      setLoadingTodoIds(prev => prev.filter(x => x !== id));
-    }
-  };
-
-  const handleRename = async (id: number, newTitleValue: string) => {
-    const current = todos.find(t => t.id === id);
-
-    if (!current) {
-      return;
-    }
-
-    setLoadingTodoIds(prev => [...prev, id]);
-    try {
-      const updated = await updateTodo({ ...current, title: newTitleValue });
-
-      setTodos(prev => prev.map(t => (t.id === id ? updated : t)));
-    } catch {
-      setErrorMessage(ErrorText.Update);
-    } finally {
-      setLoadingTodoIds(prev => prev.filter(x => x !== id));
-    }
-  };
-
   const activeTodosCount = todos.filter(t => !t.completed).length;
   const allCompleted = todos.length > 0 && activeTodosCount === 0;
   const hasCompleted = todos.some(t => t.completed);
+
+  if (!USER_ID) {
+    return <UserWarning />;
+  }
 
   return (
     <div className="todoapp">
@@ -222,14 +189,14 @@ export const App: React.FC = () => {
                   key={todo.id}
                   todo={todo}
                   isLoading={isRowLoading}
-                  onToggle={() => handleToggle(todo)}
+                  onToggle={() => {}}
                   onDelete={() => handleDelete(todo.id)}
-                  onRename={handleRename}
+                  onRename={() => {}}
                 />
               );
             })}
 
-            {tempTodo && filterStatus !== FilterStatus.Completed && (
+            {tempTodo && (
               <TodoItem
                 key="temp"
                 todo={tempTodo}
@@ -254,9 +221,10 @@ export const App: React.FC = () => {
 
       <div
         data-cy="ErrorNotification"
-        className={`notification is-danger is-light has-text-weight-normal ${
-          errorMessage ? '' : 'hidden'
-        }`}
+        className={classNames(
+          'notification is-danger is-light has-text-weight-normal',
+          { hidden: !errorMessage },
+        )}
       >
         <button
           data-cy="HideErrorButton"
